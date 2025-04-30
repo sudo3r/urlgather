@@ -7,9 +7,14 @@ import warnings
 from netaddr import IPNetwork, IPAddress, iter_iprange
 from urllib.parse import urlparse
 from colorama import Fore, Style
+import atexit
 
 warnings.filterwarnings("ignore")
 requests.packages.urllib3.disable_warnings()
+
+found_urls = set()
+output_file = None
+file_lock = None
 
 def log(message, level="i"):  
     levels = {
@@ -29,8 +34,30 @@ def show_banner():
 
 """ + Fore.RESET + "        [ URL Gathering Tool ]\n")
 
+def cleanup_resources():
+    global output_file, file_lock
+    if output_file:
+        try:
+            output_file.close()
+            log("Output file closed successfully", level="s")
+        except Exception as e:
+            log(f"Error closing output file: {str(e)}", level="e")
+    if file_lock:
+        file_lock.shutdown(wait=True)
+
+def save_url(url):
+    global found_urls, output_file, file_lock
+    if url not in found_urls:
+        found_urls.add(url)
+        if output_file:
+            try:
+                future = file_lock.submit(lambda: output_file.write(url + '\n'))
+                future.add_done_callback(lambda f: f.result())
+                output_file.flush()
+            except Exception as e:
+                log(f"Error saving URL: {str(e)}", level="e")
+
 def ip_range_generator(ip_input):
-    """Generates IPs one by one without loading entire range into memory"""
     if '/' in ip_input:
         network = IPNetwork(ip_input)
         for ip in network:
@@ -103,8 +130,8 @@ def process_ip(ip, args):
     
     return results
 
-def scan_ips(ip_generator, args, output_file=None):
-    found_urls = set()
+def scan_ips(ip_generator, args):
+    global found_urls
     processed = 0
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.threads) as executor:
@@ -119,13 +146,7 @@ def scan_ips(ip_generator, args, output_file=None):
                     try:
                         urls = future.result()
                         for url in urls:
-                            if url not in found_urls:
-                                if output_file:
-                                    output_file.write(url + '\n')
-                                    output_file.flush()
-                                else:
-                                    print(url)
-                                found_urls.add(url)
+                            save_url(url)
                     except Exception as e:
                         if args.verbose:
                             log(f"Error processing IP: {str(e)}", level="e")
@@ -139,33 +160,30 @@ def scan_ips(ip_generator, args, output_file=None):
             try:
                 urls = future.result()
                 for url in urls:
-                    if url not in found_urls:
-                        if output_file:
-                            output_file.write(url + '\n')
-                        else:
-                            print(url)
-                        found_urls.add(url)
+                    save_url(url)
             except Exception as e:
                 if args.verbose:
                     log(f"[!] Error: {str(e)}", level="e")
     
-    return found_urls, processed
+    return processed
 
 def main():
+    global output_file, file_lock, found_urls
+    
     show_banner()
     
     parser = argparse.ArgumentParser(
-        description='Domain discovery and verification from IP ranges',
+        description='Domain discovery from IP ranges',
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""Examples:
-  # Find domains in range and verify connections
-  python scanner.py 192.168.1.0/24 -v
+  Find domains in range and verify connections
+    python scanner.py 192.168.1.0/24 -v
   
-  # Scan large network and save results
-  python scanner.py 10.0.0.0/16 -o domains.txt
+  Scan large network and save results
+    python scanner.py 10.0.0.0/16 -o domains.txt
   
-  # Fast scan with 100 threads
-  python scanner.py 52.0.0.0/8 -t 100 --no-ip-check""")
+  Fast scan with 100 threads
+    python scanner.py 52.0.0.0/8 -t 100 --no-ip-check""")
     
     parser.add_argument('ip_range', help='IP range (CIDR or start-end)')
     parser.add_argument('-t', '--threads', type=int, default=50,
@@ -180,6 +198,8 @@ def main():
     
     args = parser.parse_args()
     
+    atexit.register(cleanup_resources)
+    
     try:
         ip_gen = ip_range_generator(args.ip_range)
         
@@ -189,25 +209,24 @@ def main():
                 net = IPNetwork(args.ip_range)
                 log(f"Scanning network: {net} ({net.size} IPs)", level="i")
         
-        output_file = None
         if args.output:
             output_file = open(args.output, 'w')
         
-        found_urls, total_processed = scan_ips(ip_gen, args, output_file)
+        file_lock = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        
+        total_processed = scan_ips(ip_gen, args)
         
         if args.verbose:
             log(f"Scan completed. Processed {total_processed} IPs", level="i")
             log(f"Found {len(found_urls)} unique URLs", level="i")
             if args.output:
                 log(f"Results saved to {args.output}", level="i")
-        
-        if output_file:
-            output_file.close()
     
     except KeyboardInterrupt:
         log("Scan interrupted by user", level="w")
-        if output_file:
-            output_file.close()
+        log(f"Saved {len(found_urls)} URLs before interruption", level="i")
+        if args.output:
+            log(f"Results saved to {args.output}", level="i")
         sys.exit(1)
     except Exception as e:
         log(f"Error: {str(e)}", level="e")
