@@ -15,13 +15,17 @@ requests.packages.urllib3.disable_warnings()
 found_urls = set()
 output_file = None
 file_lock = None
+VERBOSE = False
 
-def log(message, level="i"):  
+def log(message, level="i", verbose=False):
+    if verbose and not VERBOSE:
+        return
+    
     levels = {
-        "i": f"{Fore.LIGHTBLUE_EX}[*]{Style.RESET_ALL}",
-        "s": f"{Fore.LIGHTGREEN_EX}[+]{Style.RESET_ALL}",
-        "w": f"{Fore.LIGHTYELLOW_EX}[!]{Style.RESET_ALL}",
-        "e": f"{Fore.LIGHTRED_EX}[-]{Style.RESET_ALL}",
+        "i": f"{Fore.LIGHTBLUE_EX}[*]{Style.RESET_ALL}",  # info
+        "s": f"{Fore.LIGHTGREEN_EX}[+]{Style.RESET_ALL}",  # success
+        "w": f"{Fore.LIGHTYELLOW_EX}[!]{Style.RESET_ALL}",  # warning
+        "e": f"{Fore.LIGHTRED_EX}[-]{Style.RESET_ALL}",  # error
     }
     print(f"{levels.get(level, levels['i'])} {message}")
 
@@ -32,16 +36,16 @@ def show_banner():
  |  |  |  _| |  |  | .'|  _|   | -_|  _|
  |_____|_| |_|_____|__,|_| |_|_|___|_|
 
-""" + Fore.RESET + "        [ URL Gathering Tool ]\n")
+""" + Fore.RESET + "   [ URL Gathering Tool ]\n")
 
 def cleanup_resources():
     global output_file, file_lock
     if output_file:
         try:
             output_file.close()
-            log("Output file closed successfully", level="s")
+            log("Output file closed successfully", "s")
         except Exception as e:
-            log(f"Error closing output file: {str(e)}", level="e")
+            log(f"Error closing output file: {str(e)}", "e")
     if file_lock:
         file_lock.shutdown(wait=True)
 
@@ -55,7 +59,7 @@ def save_url(url):
                 future.add_done_callback(lambda f: f.result())
                 output_file.flush()
             except Exception as e:
-                log(f"Error saving URL: {str(e)}", level="e")
+                log(f"Error saving URL: {str(e)}", "e")
 
 def ip_range_generator(ip_input):
     if '/' in ip_input:
@@ -108,8 +112,7 @@ def process_ip(ip, args):
     if args.check_ip:
         direct_url = check_web_service(ip)
         if direct_url:
-            if args.verbose:
-                log(f"Direct access: {direct_url}", level="s")
+            log(f"Direct access: {direct_url}", "s", True)
             results.add(direct_url)
     
     primary_host, aliases = resolve_dns(ip)
@@ -123,8 +126,7 @@ def process_ip(ip, args):
                 if final_url:
                     parsed = urlparse(final_url)
                     if parsed.hostname == host:
-                        if args.verbose:
-                            log(f"Verified domain: {final_url} (from {ip})", level="s")
+                        log(f"Verified domain: {final_url} (from {ip})", "s", True)
                         results.add(final_url)
                         break
     
@@ -148,13 +150,12 @@ def scan_ips(ip_generator, args):
                         for url in urls:
                             save_url(url)
                     except Exception as e:
-                        if args.verbose:
-                            log(f"Error processing IP: {str(e)}", level="e")
+                        log(f"Error processing IP: {str(e)}", "e", True)
                     futures.remove(future)
                     break
             
-            if args.verbose and processed % 1000 == 0:
-                log(f"Processed {processed} IPs - Found {len(found_urls)} URLs", level="i")
+            if processed % 1000 == 0:
+                log(f"Processed {processed} IPs - Found {len(found_urls)} URLs", "i", True)
         
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -162,13 +163,12 @@ def scan_ips(ip_generator, args):
                 for url in urls:
                     save_url(url)
             except Exception as e:
-                if args.verbose:
-                    log(f"[!] Error: {str(e)}", level="e")
+                log(f"[!] Error: {str(e)}", "e", True)
     
     return processed
 
 def main():
-    global output_file, file_lock, found_urls
+    global output_file, file_lock, found_urls, VERBOSE
     
     show_banner()
     
@@ -197,17 +197,17 @@ def main():
                       help='Skip direct IP access checking')
     
     args = parser.parse_args()
+    VERBOSE = args.verbose
     
     atexit.register(cleanup_resources)
     
     try:
         ip_gen = ip_range_generator(args.ip_range)
         
-        if args.verbose:
-            log(f"Starting scan with {args.threads} threads", level="i")
-            if '/' in args.ip_range:
-                net = IPNetwork(args.ip_range)
-                log(f"Scanning network: {net} ({net.size} IPs)", level="i")
+        log(f"Starting scan with {args.threads} threads", "i")
+        if '/' in args.ip_range:
+            net = IPNetwork(args.ip_range)
+            log(f"Scanning network: {net} ({net.size} IPs)", "i")
         
         if args.output:
             output_file = open(args.output, 'w')
@@ -216,20 +216,19 @@ def main():
         
         total_processed = scan_ips(ip_gen, args)
         
-        if args.verbose:
-            log(f"Scan completed. Processed {total_processed} IPs", level="i")
-            log(f"Found {len(found_urls)} unique URLs", level="i")
-            if args.output:
-                log(f"Results saved to {args.output}", level="i")
+        log(f"Scan completed. Processed {total_processed} IPs", "i")
+        log(f"Found {len(found_urls)} unique URLs", "i")
+        if args.output:
+            log(f"Results saved to {args.output}", "i")
     
     except KeyboardInterrupt:
-        log("Scan interrupted by user", level="w")
-        log(f"Saved {len(found_urls)} URLs before interruption", level="i")
+        log("Scan interrupted by user", "w")
+        log(f"Saved {len(found_urls)} URLs before interruption", "i")
         if args.output:
-            log(f"Results saved to {args.output}", level="i")
+            log(f"Results saved to {args.output}", "i")
         sys.exit(1)
     except Exception as e:
-        log(f"Error: {str(e)}", level="e")
+        log(f"Error: {str(e)}", "e")
         parser.print_help()
         sys.exit(1)
 
