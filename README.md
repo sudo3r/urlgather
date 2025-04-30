@@ -26,12 +26,12 @@ options:
   --no-ip-check         Skip direct IP access checking
 
 Examples:
-  # Find domains in range and verify connections
-  python scanner.py 192.168.1.0/24 -v
+  Find domains in range and verify connections
+    python scanner.py 192.168.1.0/24 -v
   
-  # Scan large network and save results
-  python scanner.py 10.0.0.0/16 -o domains.txt
+  Scan large network and save results
+    python scanner.py 10.0.0.0/16 -o domains.txt
   
-  # Fast scan with 100 threads
-  python scanner.py 52.0.0.0/8 -t 100 --no-ip-check
+  Fast scan with 100 threads
+    python scanner.py 52.0.0.0/8 -t 100 --no-ip-check
 ```
