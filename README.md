@@ -1,7 +1,7 @@
 # urlgather
 Automatic URL gathering from IP ranges
 ## Usage
-```shell
+```
 usage: urlgather.py [-h] [-t THREADS] [-o OUTPUT] [-v] [-to TIMEOUT] [--no-ip-check] ip_range
 
 Domain discovery and verification from IP ranges
