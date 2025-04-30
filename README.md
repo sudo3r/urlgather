@@ -1,6 +1,12 @@
 # urlgather
 Automatic URL gathering from IP ranges
 ## Usage
+
+### Installation
+```shell
+pip install -r requirements.txt
+```
+### Options
 ```
 usage: urlgather.py [-h] [-t THREADS] [-o OUTPUT] [-v] [-to TIMEOUT] [--no-ip-check] ip_range
 
