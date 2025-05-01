@@ -180,11 +180,11 @@ async def async_main():
         if args.output:
             output_file = open(args.output, 'w')
         
-        log(f"IP Range:{Style.RESET_ALL} {args.ip_range}", "i")
-        log(f"Threads:{Style.RESET_ALL} {args.threads}", "i")
-        log(f"Timeout:{Style.RESET_ALL} {args.timeout}s", "i")
-        log(f"Output File:{Style.RESET_ALL} {args.output or 'None'}", "i")
-        log(f"Verbose Mode:{Style.RESET_ALL} {'Enabled' if args.verbose else 'Disabled'}\n", "i")
+        log(f"IP Range: {args.ip_range}", "i")
+        log(f"Threads: {args.threads}", "i")
+        log(f"Timeout: {args.timeout}s", "i")
+        log(f"Output File: {args.output or 'None'}", "i")
+        log(f"Verbose: {'Enabled' if args.verbose else 'Disabled'}\n", "i")
         
         ip_gen = ip_range_generator(args.ip_range)
         total_processed = await scan_ips(ip_gen, args)
