@@ -163,7 +163,7 @@ def scan_ips(ip_generator, args):
                 for url in urls:
                     save_url(url)
             except Exception as e:
-                log(f"[!] Error: {str(e)}", "e", True)
+                log(f"Error: {str(e)}", "e", True)
     
     return processed
 
