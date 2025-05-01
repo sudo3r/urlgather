@@ -4,11 +4,8 @@ import socket
 from netaddr import IPNetwork, IPAddress, iter_iprange
 import argparse
 from colorama import Fore, Style
-import warnings
 import atexit
 from functools import lru_cache
-
-warnings.filterwarnings("ignore")
 
 found_urls = set()
 output_file = None
