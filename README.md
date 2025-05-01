@@ -8,9 +8,14 @@ pip install -r requirements.txt
 ```
 ### Options
 ```
-usage: urlgather.py [-h] [-t THREADS] [-o OUTPUT] [-v] [-to TIMEOUT] [--no-ip-check] ip_range
+  _____     _ _____     _   _           
+ |  |  |___| |   __|___| |_| |_ ___ ___ 
+ |  |  |  _| |  |  | .'|  _|   | -_|  _|
+ |_____|_| |_|_____|__,|_| |_|_|___|_|
 
-Domain discovery and verification from IP ranges
+   [ URL Gathering Tool ]
+
+usage: urlgather.py [-h] [-t THREADS] [-o OUTPUT] [-v] [-to TIMEOUT] ip_range
 
 positional arguments:
   ip_range              IP range (CIDR or start-end)
@@ -22,16 +27,12 @@ options:
   -o, --output OUTPUT   Output file for results
   -v, --verbose         Show detailed scanning progress
   -to, --timeout TIMEOUT
-                        Connection timeout in seconds (default: 3)
-  --no-ip-check         Skip direct IP access checking
+                        Connection timeout in seconds (default: 5)
 
 Examples:
-  Find domains in range and verify connections
-    python scanner.py 192.168.1.0/24 -v
+  Fast scan:
+    python scanner.py 192.168.1.0/24 -t 50
   
-  Scan large network and save results
-    python scanner.py 10.0.0.0/16 -o domains.txt
-  
-  Fast scan with 100 threads
-    python scanner.py 52.0.0.0/8 -t 100 --no-ip-check
+  Large network:
+    python scanner.py 10.0.0.0/16 -o urls.txt -t 100 -to 3
 ```
